@@ -40,22 +40,44 @@ def load_documents(paths: Iterable[DocumentInput]) -> List[Document]:
     documents = []
     for item in paths:
         if isinstance(item, tuple):
-            documents.append(load_document(item[0], source_name=item[1]))
+            documents.extend(_load_document_blocks(item[0], source_name=item[1]))
         else:
-            documents.append(load_document(item))
+            documents.extend(_load_document_blocks(item))
+    return documents
+
+
+def _load_document_blocks(path: PathLike, source_name: Optional[str] = None) -> List[Document]:
+    file_path = Path(path)
+    if file_path.suffix.lower() == ".pdf":
+        return _read_pdf_pages(file_path, source_name=source_name)
+    return [load_document(file_path, source_name=source_name)]
+
+
+def _read_pdf_pages(path: Path, source_name: Optional[str] = None) -> List[Document]:
+    from pypdf import PdfReader
+
+    reader = PdfReader(str(path))
+    documents = []
+    for page_number, page in enumerate(reader.pages, start=1):
+        page_text = page.extract_text() or ""
+        if page_text.strip():
+            documents.append(
+                Document(
+                    text=_normalize_text(page_text),
+                    metadata={
+                        "source": source_name or path.name,
+                        "path": str(path),
+                        "extension": ".pdf",
+                        "page_number": page_number,
+                    },
+                )
+            )
     return documents
 
 
 def _read_pdf(path: Path) -> str:
-    from pypdf import PdfReader
-
-    reader = PdfReader(str(path))
-    pages = []
-    for page_number, page in enumerate(reader.pages, start=1):
-        page_text = page.extract_text() or ""
-        if page_text.strip():
-            pages.append(f"[page {page_number}]\n{page_text}")
-    return "\n\n".join(pages)
+    pages = _read_pdf_pages(path)
+    return "\n\n".join(f"[page {page.metadata['page_number']}]\n{page.text}" for page in pages)
 
 
 def _read_docx(path: Path) -> str:

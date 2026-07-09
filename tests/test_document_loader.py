@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 from rag_service.document_loader import load_document, load_documents
 
 
@@ -20,3 +22,30 @@ def test_load_markdown_with_original_source_name(tmp_path):
 
     assert "# Тема" in document.text
     assert document.metadata["source"] == "original name.md"
+
+
+def test_load_pdf_as_page_documents(monkeypatch, tmp_path):
+    class Page:
+        def __init__(self, text):
+            self.text = text
+
+        def extract_text(self):
+            return self.text
+
+    class FakeReader:
+        def __init__(self, path):
+            self.pages = [Page("Первая страница"), Page("Вторая страница")]
+
+    monkeypatch.setitem(
+        __import__("sys").modules,
+        "pypdf",
+        SimpleNamespace(PdfReader=FakeReader),
+    )
+    path = tmp_path / "lecture.pdf"
+    path.write_bytes(b"fake pdf")
+
+    documents = load_documents([path])
+
+    assert len(documents) == 2
+    assert documents[0].metadata["page_number"] == 1
+    assert documents[1].metadata["page_number"] == 2

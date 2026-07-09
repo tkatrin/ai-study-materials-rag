@@ -23,8 +23,8 @@ class OllamaGenerator:
             "stream": False,
             "options": {"temperature": self.temperature},
         }
-        response = self._post_json("/api/generate", payload)
-        text = response.get("response", "").strip()
+        response_payload = self._post_json("/api/generate", payload)
+        text = str(response_payload.get("response", "")).strip()
         if not text:
             raise RuntimeError("Ollama returned an empty response")
         return text
@@ -39,15 +39,24 @@ class OllamaGenerator:
         )
         try:
             with request.urlopen(http_request, timeout=self.timeout) as response:
-                payload = json.loads(response.read().decode("utf-8"))
-                if "error" in payload:
-                    raise RuntimeError(str(payload["error"]))
-                return payload
+                raw_body = response.read().decode("utf-8")
+        except error.HTTPError as exc:
+            details = exc.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"Ollama returned HTTP {exc.code}: {details}") from exc
         except error.URLError as exc:
             raise RuntimeError(
                 "Cannot reach Ollama. Start it with `ollama serve` and pull a model, "
                 "for example `ollama pull llama3.1`."
             ) from exc
+        try:
+            response_payload = json.loads(raw_body)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError("Ollama returned invalid JSON") from exc
+        if not isinstance(response_payload, dict):
+            raise RuntimeError("Ollama returned an unexpected response format")
+        if "error" in response_payload:
+            raise RuntimeError(str(response_payload["error"]))
+        return response_payload
 
 
 def make_generator(mode: str, ollama_model: str, ollama_url: str) -> Optional[OllamaGenerator]:

@@ -32,7 +32,7 @@ def build_answer(
 def build_prompt(question: str, chunks: List[Chunk]) -> str:
     context_blocks = []
     for index, chunk in enumerate(chunks, start=1):
-        source = chunk.metadata.get("source", "unknown")
+        source = _source_label(chunk)
         chunk_id = chunk.metadata.get("chunk_id", index)
         context_blocks.append(f"[{index}] {source}, fragment {chunk_id}\n{chunk.text}")
 
@@ -79,7 +79,7 @@ def extractive_answer(question: str, chunks: List[Chunk], max_sentences: int = 5
 def format_sources(chunks: Iterable[Chunk], max_chars: int = 500) -> str:
     lines = []
     for index, chunk in enumerate(chunks, start=1):
-        source = chunk.metadata.get("source", "unknown")
+        source = _source_label(chunk)
         chunk_id = chunk.metadata.get("chunk_id", index)
         preview = chunk.text[:max_chars].strip()
         if len(chunk.text) > max_chars:
@@ -111,3 +111,11 @@ def _terms(text: str) -> set:
         for token in text.split()
         if len(token.strip(".,:;!?()[]{}\"'")) > 3
     }
+
+
+def _source_label(chunk: Chunk) -> str:
+    source = chunk.metadata.get("source", "unknown")
+    page_number = chunk.metadata.get("page_number")
+    if page_number is not None:
+        return f"{source}, стр. {page_number}"
+    return source

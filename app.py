@@ -32,6 +32,9 @@ if "indexed_files" not in st.session_state:
 
 st.title("AI-поиск по учебным материалам")
 
+for config_error in config.CONFIG_ERRORS:
+    st.warning(f"Настройка окружения проигнорирована: {config_error}")
+
 with st.sidebar:
     st.header("Материалы")
     uploaded_files = st.file_uploader(
@@ -41,6 +44,9 @@ with st.sidebar:
     )
     model_name = st.text_input("Embedding-модель", config.EMBEDDING_MODEL)
     chunk_size = st.slider("Размер фрагмента", 400, 1600, config.CHUNK_SIZE, 100)
+    max_overlap = max(0, min(500, chunk_size - 1))
+    default_overlap = min(config.CHUNK_OVERLAP, max_overlap)
+    chunk_overlap = st.slider("Перекрытие фрагментов", 0, max_overlap, default_overlap, 20)
     top_k = st.slider("Количество источников", 2, 8, config.TOP_K)
     min_score = st.slider("Минимальный score", 0.0, 1.0, config.MIN_SCORE, 0.05)
     generation_mode = st.selectbox("Режим ответа", ["Extractive", "Ollama"])
@@ -58,7 +64,12 @@ if build_button:
             try:
                 saved_files = save_uploaded_files(uploaded_files, DEFAULT_UPLOAD_DIR)
                 embedder = get_embedder(model_name)
-                st.session_state.store = build_index(saved_files, embedder, chunk_size=chunk_size)
+                st.session_state.store = build_index(
+                    saved_files,
+                    embedder,
+                    chunk_size=chunk_size,
+                    chunk_overlap=chunk_overlap,
+                )
                 st.session_state.indexed_files = [source_name for _path, source_name in saved_files]
             except ValueError as error:
                 st.error(str(error))
@@ -66,8 +77,12 @@ if build_button:
                 st.success(f"Индекс готов: {len(st.session_state.store.chunks)} фрагментов.")
 
 if save_index_button and st.session_state.store is not None:
-    save_index(st.session_state.store)
-    st.success(f"Индекс сохранен в {DEFAULT_INDEX_DIR}.")
+    try:
+        save_index(st.session_state.store)
+    except (OSError, ValueError, RuntimeError) as error:
+        st.error(f"Не удалось сохранить индекс: {error}")
+    else:
+        st.success(f"Индекс сохранен в {DEFAULT_INDEX_DIR}.")
 
 if load_index_button:
     try:
@@ -119,6 +134,9 @@ with left:
             st.markdown("### Источники")
             for index, (chunk, score) in enumerate(results, start=1):
                 source = chunk.metadata.get("source", "unknown")
+                page_number = chunk.metadata.get("page_number")
+                if page_number is not None:
+                    source = f"{source}, стр. {page_number}"
                 chunk_id = chunk.metadata.get("chunk_id", index)
                 with st.expander(f"[{index}] {source}, фрагмент {chunk_id} · score {score:.3f}", expanded=index == 1):
                     st.write(chunk.text)
