@@ -33,3 +33,16 @@ def test_chunk_documents_preserves_source_metadata():
     assert chunks
     assert chunks[0].metadata["source"] == "notes.md"
     assert chunks[0].metadata["chunk_id"] == 1
+
+
+def test_chunk_documents_extracts_pdf_page_marker():
+    documents = [
+        Document(
+            text="[page 3]\nТекст страницы.",
+            metadata={"source": "lecture.pdf"},
+        )
+    ]
+
+    chunks = chunk_documents(documents)
+
+    assert chunks[0].metadata["page_number"] == 3
