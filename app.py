@@ -48,10 +48,27 @@ with st.sidebar:
     default_overlap = min(config.CHUNK_OVERLAP, max_overlap)
     chunk_overlap = st.slider("Перекрытие фрагментов", 0, max_overlap, default_overlap, 20)
     top_k = st.slider("Количество источников", 2, 8, config.TOP_K)
-    min_score = st.slider("Минимальный score", 0.0, 1.0, config.MIN_SCORE, 0.05)
+    min_score = st.slider(
+        "Минимальный score",
+        0.0,
+        1.0,
+        config.MIN_SCORE,
+        0.05,
+        help=(
+            "Cosine similarity для найденных фрагментов: выше — строже, ниже — мягче. "
+            "Обычно 0.25–0.4 дает более чистый контекст."
+        ),
+    )
     generation_mode = st.selectbox("Режим ответа", ["Extractive", "Ollama"])
     ollama_url = st.text_input("Ollama URL", config.OLLAMA_URL, disabled=generation_mode != "Ollama")
     ollama_model = st.text_input("Ollama-модель", config.OLLAMA_MODEL, disabled=generation_mode != "Ollama")
+    ollama_timeout = st.number_input(
+        "Ollama timeout, сек.",
+        min_value=1,
+        max_value=600,
+        value=config.OLLAMA_TIMEOUT,
+        disabled=generation_mode != "Ollama",
+    )
     build_button = st.button("Построить индекс", type="primary", use_container_width=True)
     save_index_button = st.button("Сохранить индекс", disabled=st.session_state.get("store") is None, use_container_width=True)
     load_index_button = st.button("Загрузить сохраненный индекс", disabled=not has_saved_index(), use_container_width=True)
@@ -110,7 +127,12 @@ with left:
         else:
             with st.spinner("Ищу релевантные фрагменты..."):
                 embedder = get_embedder(model_name)
-                generator = make_generator(generation_mode, ollama_model, ollama_url)
+                generator = make_generator(
+                    generation_mode,
+                    ollama_model,
+                    ollama_url,
+                    int(ollama_timeout),
+                )
                 try:
                     answer, results = ask_question(
                         question,

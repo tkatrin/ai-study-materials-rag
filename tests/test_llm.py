@@ -4,7 +4,7 @@ from urllib import error
 
 import pytest
 
-from rag_service.llm import OllamaGenerator
+from rag_service.llm import OllamaGenerator, make_generator
 
 
 def test_ollama_generator_reports_invalid_json(monkeypatch):
@@ -38,3 +38,10 @@ def test_ollama_generator_reports_http_error(monkeypatch):
 
     with pytest.raises(RuntimeError, match="HTTP 404"):
         OllamaGenerator()("prompt")
+
+
+def test_make_generator_passes_timeout():
+    generator = make_generator("Ollama", "llama3.1", "http://localhost:11434", ollama_timeout=240)
+
+    assert isinstance(generator, OllamaGenerator)
+    assert generator.timeout == 240

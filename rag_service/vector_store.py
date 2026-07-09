@@ -1,5 +1,8 @@
 import json
+import os
 from pathlib import Path
+import shutil
+import tempfile
 from typing import Any, List, Optional, Sequence, Tuple, Union
 
 from .models import Chunk
@@ -47,6 +50,27 @@ class FaissVectorStore:
 
     def save(self, directory: PathLike) -> None:
         path = Path(directory)
+        parent = path.parent
+        parent.mkdir(parents=True, exist_ok=True)
+        temp_path = Path(tempfile.mkdtemp(prefix=f".{path.name}.", dir=str(parent)))
+        backup_path = None
+        try:
+            self._write_to_directory(temp_path)
+            if path.exists():
+                backup_path = Path(tempfile.mkdtemp(prefix=f".{path.name}.backup.", dir=str(parent)))
+                backup_path.rmdir()
+                os.replace(path, backup_path)
+            os.replace(temp_path, path)
+            if backup_path and backup_path.exists():
+                shutil.rmtree(backup_path)
+        except Exception:
+            if temp_path.exists():
+                shutil.rmtree(temp_path)
+            if backup_path and backup_path.exists() and not path.exists():
+                os.replace(backup_path, path)
+            raise
+
+    def _write_to_directory(self, path: Path) -> None:
         path.mkdir(parents=True, exist_ok=True)
         _faiss().write_index(self.index, str(path / "index.faiss"))
         payload = [

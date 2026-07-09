@@ -40,13 +40,18 @@ def load_documents(paths: Iterable[DocumentInput]) -> List[Document]:
     documents = []
     for item in paths:
         if isinstance(item, tuple):
-            documents.extend(_load_document_blocks(item[0], source_name=item[1]))
+            documents.extend(load_document_blocks(item[0], source_name=item[1]))
         else:
-            documents.extend(_load_document_blocks(item))
+            documents.extend(load_document_blocks(item))
     return documents
 
 
-def _load_document_blocks(path: PathLike, source_name: Optional[str] = None) -> List[Document]:
+def load_document_blocks(path: PathLike, source_name: Optional[str] = None) -> List[Document]:
+    """Load one or more retrievable blocks from a file.
+
+    PDF files are split into one document per page. Other supported files are
+    returned as a single document.
+    """
     file_path = Path(path)
     if file_path.suffix.lower() == ".pdf":
         return _read_pdf_pages(file_path, source_name=source_name)

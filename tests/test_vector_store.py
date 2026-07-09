@@ -51,3 +51,25 @@ def test_vector_store_rejects_embedding_model_mismatch(tmp_path):
 
     with pytest.raises(ValueError, match="model-a"):
         FaissVectorStore.load(tmp_path, expected_embedding_model="model-b")
+
+
+def test_vector_store_save_replaces_existing_index(tmp_path):
+    index_dir = tmp_path / "index"
+    first_store = FaissVectorStore(dimension=2, embedding_model="model-a")
+    first_store.add(
+        [Chunk(text="первый", metadata={"source": "a.txt", "chunk_id": 1})],
+        np.array([[1.0, 0.0]], dtype="float32"),
+    )
+    first_store.save(index_dir)
+
+    second_store = FaissVectorStore(dimension=2, embedding_model="model-a")
+    second_store.add(
+        [Chunk(text="второй", metadata={"source": "b.txt", "chunk_id": 1})],
+        np.array([[0.0, 1.0]], dtype="float32"),
+    )
+    second_store.save(index_dir)
+
+    loaded = FaissVectorStore.load(index_dir, expected_embedding_model="model-a")
+
+    assert loaded.chunks[0].text == "второй"
+    assert loaded.index.ntotal == 1

@@ -1,10 +1,6 @@
-import re
 from typing import Iterable, List
 
 from .models import Chunk, Document
-
-
-PAGE_PATTERN = re.compile(r"\[page (\d+)\]", re.IGNORECASE)
 
 
 def chunk_documents(
@@ -17,9 +13,6 @@ def chunk_documents(
         for index, text in enumerate(split_text(document.text, chunk_size, chunk_overlap), start=1):
             metadata = dict(document.metadata)
             metadata["chunk_id"] = index
-            page_number = _page_number(text)
-            if page_number is not None:
-                metadata["page_number"] = page_number
             chunks.append(Chunk(text=text, metadata=metadata))
     return chunks
 
@@ -68,10 +61,3 @@ def _normalize_for_chunking(text: str) -> str:
     lines = [" ".join(line.split()) for line in text.splitlines()]
     lines = [line for line in lines if line]
     return "\n".join(lines)
-
-
-def _page_number(text: str):
-    match = PAGE_PATTERN.search(text)
-    if not match:
-        return None
-    return int(match.group(1))

@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from rag_service.document_loader import load_document, load_documents
+from rag_service.document_loader import load_document, load_document_blocks, load_documents
 
 
 def test_load_txt_document(tmp_path):
@@ -49,3 +49,32 @@ def test_load_pdf_as_page_documents(monkeypatch, tmp_path):
     assert len(documents) == 2
     assert documents[0].metadata["page_number"] == 1
     assert documents[1].metadata["page_number"] == 2
+
+
+def test_load_document_pdf_returns_single_combined_document(monkeypatch, tmp_path):
+    class Page:
+        def __init__(self, text):
+            self.text = text
+
+        def extract_text(self):
+            return self.text
+
+    class FakeReader:
+        def __init__(self, path):
+            self.pages = [Page("Первая страница"), Page("Вторая страница")]
+
+    monkeypatch.setitem(
+        __import__("sys").modules,
+        "pypdf",
+        SimpleNamespace(PdfReader=FakeReader),
+    )
+    path = tmp_path / "lecture.pdf"
+    path.write_bytes(b"fake pdf")
+
+    document = load_document(path)
+    blocks = load_document_blocks(path)
+
+    assert len(blocks) == 2
+    assert "[page 1]" in document.text
+    assert "[page 2]" in document.text
+    assert "page_number" not in document.metadata

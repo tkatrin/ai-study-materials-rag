@@ -59,7 +59,12 @@ class OllamaGenerator:
         return response_payload
 
 
-def make_generator(mode: str, ollama_model: str, ollama_url: str) -> Optional[OllamaGenerator]:
+def make_generator(
+    mode: str,
+    ollama_model: str,
+    ollama_url: str,
+    ollama_timeout: int = 120,
+) -> Optional[OllamaGenerator]:
     if mode == "Ollama":
-        return OllamaGenerator(model=ollama_model, base_url=ollama_url)
+        return OllamaGenerator(model=ollama_model, base_url=ollama_url, timeout=ollama_timeout)
     return None
