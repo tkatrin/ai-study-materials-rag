@@ -4,6 +4,7 @@ from .chunker import chunk_documents
 from .document_loader import DocumentInput, load_documents
 from .models import Answer, Chunk
 from .rag_chain import TextGenerator, build_answer
+from .reranker import RetrievalResult
 from .vector_store import FaissVectorStore
 
 
@@ -15,6 +16,16 @@ class Embedder(Protocol):
         ...
 
     def embed(self, texts: Iterable[str]):
+        ...
+
+
+class Reranker(Protocol):
+    def rerank(
+        self,
+        question: str,
+        results: List[RetrievalResult],
+        top_k: int,
+    ) -> List[RetrievalResult]:
         ...
 
 
@@ -41,8 +52,15 @@ def ask_question(
     top_k: int = 4,
     generator: Optional[TextGenerator] = None,
     min_score: Optional[float] = None,
+    candidate_k: Optional[int] = None,
+    reranker: Optional[Reranker] = None,
 ) -> Tuple[Answer, List[Tuple[Chunk, float]]]:
     query_embedding = embedder.embed([question])
-    results = store.search(query_embedding, top_k=top_k, min_score=min_score)
+    retrieval_k = max(top_k, candidate_k or top_k)
+    results = store.search(query_embedding, top_k=retrieval_k, min_score=min_score)
+    if reranker is not None:
+        results = reranker.rerank(question, results, top_k=top_k)
+    else:
+        results = results[:top_k]
     chunks = [chunk for chunk, _score in results]
     return build_answer(question, chunks, generator=generator), results

@@ -15,6 +15,14 @@ def read_str(name: str, default: str) -> str:
     return value or default
 
 
+def read_choice(name: str, default: str, choices: set) -> str:
+    value = read_str(name, default)
+    if value in choices:
+        return value
+    CONFIG_ERRORS.append(f"{name} must be one of {sorted(choices)}, got '{value}'")
+    return default
+
+
 def read_int(name: str, default: int) -> int:
     value = os.getenv(name)
     if value is None or not value.strip():
@@ -97,4 +105,16 @@ OLLAMA_TIMEOUT = require_range(
     120,
     lambda value: value > 0,
     "greater than 0",
+)
+RERANK_MODE = read_choice("RAG_RERANK_MODE", "None", {"None", "Keyword", "CrossEncoder"})
+RERANK_CANDIDATES = require_range(
+    "RAG_RERANK_CANDIDATES",
+    read_int_or_default("RAG_RERANK_CANDIDATES", 12),
+    12,
+    lambda value: value > 0,
+    "greater than 0",
+)
+RERANK_MODEL = read_str(
+    "RAG_RERANK_MODEL",
+    "cross-encoder/ms-marco-MiniLM-L-6-v2",
 )

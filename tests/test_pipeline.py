@@ -23,6 +23,16 @@ class FakeEmbedder:
         return np.array(vectors, dtype="float32")
 
 
+class PreferDatabaseReranker:
+    def rerank(self, question, results, top_k):
+        sorted_results = sorted(
+            results,
+            key=lambda item: "База данных" in item[0].text,
+            reverse=True,
+        )
+        return sorted_results[:top_k]
+
+
 def test_build_index_then_ask_question(tmp_path):
     path = tmp_path / "ml.md"
     path.write_text(
@@ -38,3 +48,26 @@ def test_build_index_then_ask_question(tmp_path):
     assert store.embedding_model == "fake-embedder"
     assert results[0][0].metadata["source"] == "ml.md"
     assert "Градиентный спуск" in answer.answer
+
+
+def test_ask_question_can_rerank_candidates(tmp_path):
+    path = tmp_path / "notes.md"
+    path.write_text(
+        "Градиентный спуск уменьшает функцию потерь.\n\n"
+        "База данных хранит таблицы и ключи.",
+        encoding="utf-8",
+    )
+    embedder = FakeEmbedder()
+    store = build_index([path], embedder, chunk_size=55, chunk_overlap=5)
+
+    answer, results = ask_question(
+        "Что делает градиентный спуск?",
+        store,
+        embedder,
+        top_k=1,
+        candidate_k=2,
+        reranker=PreferDatabaseReranker(),
+    )
+
+    assert "База данных" in results[0][0].text
+    assert "База данных" in answer.answer

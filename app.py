@@ -14,6 +14,7 @@ from rag_service.index_manager import (
 from rag_service.llm import make_generator
 from rag_service.pipeline import ask_question, build_index
 from rag_service.rag_chain import format_sources
+from rag_service.reranker import make_reranker
 
 
 st.set_page_config(page_title="AI-поиск по учебным материалам", page_icon="🔎", layout="wide")
@@ -60,6 +61,20 @@ with st.sidebar:
         ),
     )
     generation_mode = st.selectbox("Режим ответа", ["Extractive", "Ollama"])
+    rerank_mode = st.selectbox("Reranking", ["None", "Keyword", "CrossEncoder"], index=["None", "Keyword", "CrossEncoder"].index(config.RERANK_MODE))
+    rerank_candidates = st.slider(
+        "Кандидатов для rerank",
+        top_k,
+        20,
+        max(top_k, min(config.RERANK_CANDIDATES, 20)),
+        disabled=rerank_mode == "None",
+        help="FAISS сначала вернет столько кандидатов, затем reranker выберет лучшие источники.",
+    )
+    rerank_model = st.text_input(
+        "CrossEncoder-модель",
+        config.RERANK_MODEL,
+        disabled=rerank_mode != "CrossEncoder",
+    )
     ollama_url = st.text_input("Ollama URL", config.OLLAMA_URL, disabled=generation_mode != "Ollama")
     ollama_model = st.text_input("Ollama-модель", config.OLLAMA_MODEL, disabled=generation_mode != "Ollama")
     ollama_timeout = st.number_input(
@@ -134,6 +149,11 @@ with left:
                     int(ollama_timeout),
                 )
                 try:
+                    reranker = make_reranker(rerank_mode, rerank_model)
+                except (RuntimeError, ValueError) as error:
+                    st.warning(f"Reranking недоступен, продолжаю без него. Детали: {error}")
+                    reranker = None
+                try:
                     answer, results = ask_question(
                         question,
                         st.session_state.store,
@@ -141,6 +161,8 @@ with left:
                         top_k=top_k,
                         generator=generator,
                         min_score=min_score,
+                        candidate_k=rerank_candidates,
+                        reranker=reranker,
                     )
                 except RuntimeError as error:
                     st.warning(f"LLM недоступна, показываю extractive-ответ. Детали: {error}")
@@ -150,6 +172,8 @@ with left:
                         embedder,
                         top_k=top_k,
                         min_score=min_score,
+                        candidate_k=rerank_candidates,
+                        reranker=reranker,
                     )
             st.markdown("### Ответ")
             st.write(answer.answer)

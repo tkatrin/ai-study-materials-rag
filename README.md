@@ -30,6 +30,7 @@ app.py
   -> chunker          -> overlapping text chunks
   -> embedder         -> Sentence Transformers vectors
   -> vector_store     -> FAISS index + chunk metadata
+  -> reranker         -> optional Keyword/CrossEncoder reranking
   -> rag_chain        -> answer prompt + extractive fallback
   -> llm              -> optional Ollama generation
 ```
@@ -40,6 +41,7 @@ app.py
 - `chunker.py` режет текст на фрагменты с overlap;
 - `embedder.py` создает эмбеддинги;
 - `vector_store.py` добавляет, ищет, сохраняет и загружает FAISS-индекс;
+- `reranker.py` опционально переранжирует кандидатов после FAISS;
 - `rag_chain.py` формирует ответ по найденным фрагментам;
 - `llm.py` подключает локальную Ollama-модель;
 - `pipeline.py` связывает шаги индексации и вопроса-ответа.
@@ -66,11 +68,21 @@ streamlit run app.py
 - `RAG_EMBEDDING_MODEL` — embedding-модель;
 - `RAG_CHUNK_SIZE` и `RAG_CHUNK_OVERLAP` — параметры чанкинга;
 - `RAG_TOP_K` и `RAG_MIN_SCORE` — параметры retrieval;
+- `RAG_RERANK_MODE`, `RAG_RERANK_CANDIDATES`, `RAG_RERANK_MODEL` — настройки reranking;
 - `OLLAMA_URL`, `OLLAMA_MODEL` и `OLLAMA_TIMEOUT` — настройки LLM-режима.
 
 Числовые настройки валидируются при старте. Если значение некорректное, например `RAG_TOP_K=-5` или `RAG_MIN_SCORE=7`, приложение покажет предупреждение и возьмет безопасное значение по умолчанию.
 
 `RAG_MIN_SCORE` — это порог cosine similarity, потому что эмбеддинги нормализуются, а FAISS использует inner product. Чем выше значение, тем строже поиск. Для мягкого поиска можно начать с `0.15–0.25`, для более строгого учебного QA обычно лучше пробовать `0.25–0.4`. Если релевантные фрагменты пропадают, уменьшите порог; если в контекст попадает мусор, увеличьте.
+
+## Reranking
+
+По умолчанию приложение берет `top-k` фрагментов напрямую из FAISS. Для более сильного retrieval можно включить reranking:
+
+- `Keyword` — легкий локальный reranker без дополнительной модели, полезен как быстрый baseline;
+- `CrossEncoder` — более качественный reranker из `sentence-transformers`, например `cross-encoder/ms-marco-MiniLM-L-6-v2`.
+
+Схема работы: FAISS возвращает больше кандидатов (`RAG_RERANK_CANDIDATES`, например 12 или 20), reranker пересортировывает их, и только лучшие `top-k` попадают в LLM-контекст. Первый запуск CrossEncoder может занять время, потому что модель скачивается локально.
 
 ## LLM-режим через Ollama
 
@@ -134,7 +146,7 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-Тесты покрывают разбиение текста, загрузку TXT/MD/PDF-страниц, безопасное сохранение upload-файлов, настройки окружения, метаданные чанков, полный путь `build_index -> ask_question`, генераторный fallback, обработку ошибок Ollama, FAISS-поиск, замену сохраненного индекса, сохранение embedding-модели и поведение пустого индекса.
+Тесты покрывают разбиение текста, загрузку TXT/MD/PDF-страниц, безопасное сохранение upload-файлов, настройки окружения, метаданные чанков, полный путь `build_index -> ask_question`, reranking, генераторный fallback, обработку ошибок Ollama, FAISS-поиск, замену сохраненного индекса, сохранение embedding-модели и поведение пустого индекса.
 
 ## Docker
 
@@ -159,4 +171,5 @@ docker run --rm -p 8501:8501 study-rag
 - точное извлечение сложных таблиц из PDF;
 - работу с очень большими коллекциями документов без батчинга и фоновой индексации;
 - авторизацию, роли пользователей и многопользовательский режим;
-- reranking cross-encoder'ом и морфологический анализ русского языка в extractive fallback.
+- морфологический анализ русского языка в extractive fallback;
+- production-grade reranking pipeline с батчингом, кешем и мониторингом качества.
