@@ -1,0 +1,39 @@
+<svg width="1120" height="680" viewBox="0 0 1120 680" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1120" height="680" fill="#f7f8fb"/>
+  <rect x="0" y="0" width="285" height="680" fill="#ffffff"/>
+  <rect x="28" y="28" width="229" height="42" rx="8" fill="#1f2937"/>
+  <text x="48" y="55" fill="#ffffff" font-family="Arial" font-size="17" font-weight="700">Материалы</text>
+  <text x="28" y="108" fill="#334155" font-family="Arial" font-size="15">Загрузите PDF, TXT, MD или DOCX</text>
+  <rect x="28" y="128" width="229" height="86" rx="8" fill="#eef2f7" stroke="#cbd5e1"/>
+  <text x="54" y="177" fill="#475569" font-family="Arial" font-size="15">3 файла выбрано</text>
+  <text x="28" y="250" fill="#334155" font-family="Arial" font-size="15">Размер фрагмента</text>
+  <rect x="28" y="272" width="229" height="8" rx="4" fill="#dbe3ee"/>
+  <rect x="28" y="272" width="130" height="8" rx="4" fill="#2563eb"/>
+  <circle cx="158" cy="276" r="12" fill="#2563eb"/>
+  <rect x="28" y="326" width="229" height="42" rx="8" fill="#2563eb"/>
+  <text x="73" y="353" fill="#ffffff" font-family="Arial" font-size="16" font-weight="700">Построить индекс</text>
+  <text x="334" y="58" fill="#111827" font-family="Arial" font-size="31" font-weight="700">AI-поиск по учебным материалам</text>
+  <text x="334" y="118" fill="#334155" font-family="Arial" font-size="20" font-weight="700">Вопрос</text>
+  <rect x="334" y="142" width="456" height="118" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="358" y="182" fill="#475569" font-family="Arial" font-size="16">Чем supervised learning отличается</text>
+  <text x="358" y="208" fill="#475569" font-family="Arial" font-size="16">от unsupervised learning?</text>
+  <rect x="334" y="284" width="148" height="42" rx="8" fill="#111827"/>
+  <text x="362" y="311" fill="#ffffff" font-family="Arial" font-size="16" font-weight="700">Найти ответ</text>
+  <text x="334" y="380" fill="#111827" font-family="Arial" font-size="22" font-weight="700">Ответ</text>
+  <rect x="334" y="404" width="456" height="120" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="358" y="438" fill="#334155" font-family="Arial" font-size="16">В supervised learning модель обучается</text>
+  <text x="358" y="464" fill="#334155" font-family="Arial" font-size="16">на примерах с известными метками.</text>
+  <text x="358" y="490" fill="#334155" font-family="Arial" font-size="16">В unsupervised learning меток нет.</text>
+  <text x="334" y="574" fill="#111827" font-family="Arial" font-size="22" font-weight="700">Источники</text>
+  <rect x="334" y="598" width="456" height="44" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="358" y="625" fill="#334155" font-family="Arial" font-size="15">[1] machine_learning.md, фрагмент 1</text>
+  <text x="835" y="118" fill="#334155" font-family="Arial" font-size="20" font-weight="700">Индекс</text>
+  <rect x="835" y="142" width="238" height="96" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="859" y="178" fill="#64748b" font-family="Arial" font-size="15">Фрагментов</text>
+  <text x="859" y="214" fill="#111827" font-family="Arial" font-size="34" font-weight="700">12</text>
+  <rect x="835" y="268" width="238" height="158" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="859" y="304" fill="#111827" font-family="Arial" font-size="17" font-weight="700">Файлы</text>
+  <text x="859" y="338" fill="#334155" font-family="Arial" font-size="15">machine_learning.md</text>
+  <text x="859" y="368" fill="#334155" font-family="Arial" font-size="15">databases.txt</text>
+  <text x="859" y="398" fill="#334155" font-family="Arial" font-size="15">neural_networks.md</text>
+</svg>
