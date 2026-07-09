@@ -6,6 +6,7 @@ from rag_service.file_utils import save_uploaded_files
 from rag_service.index_manager import (
     DEFAULT_INDEX_DIR,
     DEFAULT_UPLOAD_DIR,
+    clear_project_state,
     has_saved_index,
     indexed_filenames,
     load_index,
@@ -15,7 +16,6 @@ from rag_service.llm import make_generator
 from rag_service.pipeline import ask_question, build_index
 from rag_service.rag_chain import format_sources
 from rag_service.reranker import make_reranker
-
 
 st.set_page_config(page_title="AI-поиск по учебным материалам", page_icon="🔎", layout="wide")
 
@@ -39,8 +39,8 @@ for config_error in config.CONFIG_ERRORS:
 with st.sidebar:
     st.header("Материалы")
     uploaded_files = st.file_uploader(
-        "Загрузите PDF, TXT, MD или DOCX",
-        type=["pdf", "txt", "md", "docx"],
+        "Загрузите PDF, TXT, MD, HTML, IPYNB или DOCX",
+        type=["pdf", "txt", "md", "html", "ipynb", "docx"],
         accept_multiple_files=True,
     )
     model_name = st.text_input("Embedding-модель", config.EMBEDDING_MODEL)
@@ -48,7 +48,7 @@ with st.sidebar:
     max_overlap = max(0, min(500, chunk_size - 1))
     default_overlap = min(config.CHUNK_OVERLAP, max_overlap)
     chunk_overlap = st.slider("Перекрытие фрагментов", 0, max_overlap, default_overlap, 20)
-    top_k = st.slider("Количество источников", 2, 8, config.TOP_K)
+    top_k = st.slider("Количество источников", 2, 20, config.TOP_K)
     min_score = st.slider(
         "Минимальный score",
         0.0,
@@ -61,7 +61,15 @@ with st.sidebar:
         ),
     )
     generation_mode = st.selectbox("Режим ответа", ["Extractive", "Ollama"])
-    rerank_mode = st.selectbox("Reranking", ["None", "Keyword", "CrossEncoder"], index=["None", "Keyword", "CrossEncoder"].index(config.RERANK_MODE))
+    sources_only = st.checkbox(
+        "Показать только источники",
+        help="Отладочный режим: показывает найденные фрагменты без генерации ответа.",
+    )
+    rerank_mode = st.selectbox(
+        "Reranking",
+        ["None", "Keyword", "CrossEncoder"],
+        index=["None", "Keyword", "CrossEncoder"].index(config.RERANK_MODE),
+    )
     rerank_candidates = st.slider(
         "Кандидатов для rerank",
         top_k,
@@ -75,8 +83,16 @@ with st.sidebar:
         config.RERANK_MODEL,
         disabled=rerank_mode != "CrossEncoder",
     )
-    ollama_url = st.text_input("Ollama URL", config.OLLAMA_URL, disabled=generation_mode != "Ollama")
-    ollama_model = st.text_input("Ollama-модель", config.OLLAMA_MODEL, disabled=generation_mode != "Ollama")
+    ollama_url = st.text_input(
+        "Ollama URL",
+        config.OLLAMA_URL,
+        disabled=generation_mode != "Ollama",
+    )
+    ollama_model = st.text_input(
+        "Ollama-модель",
+        config.OLLAMA_MODEL,
+        disabled=generation_mode != "Ollama",
+    )
     ollama_timeout = st.number_input(
         "Ollama timeout, сек.",
         min_value=1,
@@ -85,8 +101,17 @@ with st.sidebar:
         disabled=generation_mode != "Ollama",
     )
     build_button = st.button("Построить индекс", type="primary", use_container_width=True)
-    save_index_button = st.button("Сохранить индекс", disabled=st.session_state.get("store") is None, use_container_width=True)
-    load_index_button = st.button("Загрузить сохраненный индекс", disabled=not has_saved_index(), use_container_width=True)
+    save_index_button = st.button(
+        "Сохранить индекс",
+        disabled=st.session_state.get("store") is None,
+        use_container_width=True,
+    )
+    load_index_button = st.button(
+        "Загрузить сохраненный индекс",
+        disabled=not has_saved_index(),
+        use_container_width=True,
+    )
+    clear_button = st.button("Очистить индекс и файлы", use_container_width=True)
 
 if build_button:
     if not uploaded_files:
@@ -110,7 +135,7 @@ if build_button:
 
 if save_index_button and st.session_state.store is not None:
     try:
-        save_index(st.session_state.store)
+        save_index(st.session_state.store, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     except (OSError, ValueError, RuntimeError) as error:
         st.error(f"Не удалось сохранить индекс: {error}")
     else:
@@ -124,6 +149,16 @@ if load_index_button:
     else:
         st.session_state.indexed_files = indexed_filenames(st.session_state.store)
         st.success(f"Индекс загружен: {len(st.session_state.store.chunks)} фрагментов.")
+
+if clear_button:
+    try:
+        clear_project_state()
+    except OSError as error:
+        st.error(f"Не удалось очистить индекс и файлы: {error}")
+    else:
+        st.session_state.store = None
+        st.session_state.indexed_files = []
+        st.success("Индекс и загруженные файлы очищены.")
 
 left, right = st.columns([0.58, 0.42], gap="large")
 
@@ -159,9 +194,9 @@ with left:
                         st.session_state.store,
                         embedder,
                         top_k=top_k,
-                        generator=generator,
+                        generator=None if sources_only else generator,
                         min_score=min_score,
-                        candidate_k=rerank_candidates,
+                        candidate_k=rerank_candidates if reranker is not None else None,
                         reranker=reranker,
                     )
                 except RuntimeError as error:
@@ -172,19 +207,28 @@ with left:
                         embedder,
                         top_k=top_k,
                         min_score=min_score,
-                        candidate_k=rerank_candidates,
+                        candidate_k=rerank_candidates if reranker is not None else None,
                         reranker=reranker,
                     )
-            st.markdown("### Ответ")
-            st.write(answer.answer)
+            if sources_only:
+                st.info("Режим источников: генерация ответа отключена.")
+            else:
+                st.markdown("### Ответ")
+                st.write(answer.answer)
             st.markdown("### Источники")
+            score_label = (
+                "rerank score"
+                if reranker is not None and rerank_mode == "CrossEncoder"
+                else "retrieval score"
+            )
             for index, (chunk, score) in enumerate(results, start=1):
                 source = chunk.metadata.get("source", "unknown")
                 page_number = chunk.metadata.get("page_number")
                 if page_number is not None:
                     source = f"{source}, стр. {page_number}"
                 chunk_id = chunk.metadata.get("chunk_id", index)
-                with st.expander(f"[{index}] {source}, фрагмент {chunk_id} · score {score:.3f}", expanded=index == 1):
+                label = f"[{index}] {source}, фрагмент {chunk_id} · {score_label} {score:.3f}"
+                with st.expander(label, expanded=index == 1):
                     st.write(chunk.text)
 
 with right:
@@ -193,6 +237,18 @@ with right:
         st.info("Загрузите документы и построите индекс.")
     else:
         st.metric("Фрагментов", len(st.session_state.store.chunks))
+        saved_chunk_size = st.session_state.store.index_metadata.get("chunk_size")
+        saved_chunk_overlap = st.session_state.store.index_metadata.get("chunk_overlap")
+        if saved_chunk_size and saved_chunk_size != chunk_size:
+            st.warning(
+                f"Индекс построен с размером фрагмента {saved_chunk_size}; "
+                "текущий слайдер не меняет уже сохраненный индекс."
+            )
+        if saved_chunk_overlap is not None and saved_chunk_overlap != chunk_overlap:
+            st.warning(
+                f"Индекс построен с overlap {saved_chunk_overlap}; "
+                "текущий слайдер не меняет уже сохраненный индекс."
+            )
         st.write("Файлы:")
         for filename in st.session_state.indexed_files:
             st.write(f"- {filename}")

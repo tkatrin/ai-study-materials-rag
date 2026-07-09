@@ -5,7 +5,10 @@ from rag_service.rag_chain import build_answer, format_sources
 def test_build_answer_uses_retrieved_chunks():
     chunks = [
         Chunk(
-            text="Градиентный спуск обновляет параметры модели в направлении уменьшения функции потерь.",
+            text=(
+                "Градиентный спуск обновляет параметры модели "
+                "в направлении уменьшения функции потерь."
+            ),
             metadata={"source": "ml.md", "chunk_id": 1},
         )
     ]
@@ -33,7 +36,9 @@ def test_build_answer_handles_empty_context():
 
 
 def test_format_sources_includes_file_and_fragment():
-    text = format_sources([Chunk(text="Небольшой фрагмент", metadata={"source": "a.txt", "chunk_id": 2})])
+    text = format_sources(
+        [Chunk(text="Небольшой фрагмент", metadata={"source": "a.txt", "chunk_id": 2})]
+    )
 
     assert "a.txt" in text
     assert "фрагмент 2" in text

@@ -17,6 +17,17 @@ def test_keyword_overlap_reranker_promotes_term_match():
     assert reranked[0][0].text.startswith("Градиентный спуск")
 
 
+def test_keyword_overlap_reranker_uses_faiss_score_as_tiebreaker():
+    results = [
+        (Chunk(text="Градиентный метод.", metadata={}), 0.2),
+        (Chunk(text="Градиентный алгоритм.", metadata={}), 0.8),
+    ]
+
+    reranked = KeywordOverlapReranker().rerank("Что такое градиентный подход?", results, top_k=1)
+
+    assert reranked[0][0].text == "Градиентный алгоритм."
+
+
 def test_make_reranker_returns_none_for_disabled_mode():
     assert make_reranker("None") is None
 

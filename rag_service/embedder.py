@@ -3,7 +3,6 @@ from typing import Iterable
 
 import numpy as np
 
-
 DEFAULT_EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
 

@@ -1,8 +1,7 @@
 from functools import lru_cache
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from .models import Chunk
-
 
 RetrievalResult = Tuple[Chunk, float]
 
@@ -19,10 +18,9 @@ class KeywordOverlapReranker:
         for chunk, score in results:
             chunk_terms = _terms(chunk.text)
             overlap = len(question_terms & chunk_terms)
-            rerank_score = float(score) + overlap
-            rescored.append((chunk, rerank_score))
-        rescored.sort(key=lambda item: item[1], reverse=True)
-        return rescored[:top_k]
+            rescored.append((chunk, float(score), overlap))
+        rescored.sort(key=lambda item: (item[2], item[1]), reverse=True)
+        return [(chunk, score) for chunk, score, _overlap in rescored[:top_k]]
 
 
 class CrossEncoderReranker:

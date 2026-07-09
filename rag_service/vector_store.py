@@ -1,12 +1,12 @@
 import json
 import os
-from pathlib import Path
 import shutil
 import tempfile
-from typing import Any, List, Optional, Sequence, Tuple, Union
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 from .models import Chunk
-
 
 PathLike = Union[str, Path]
 METADATA_FILENAME = "metadata.json"
@@ -16,6 +16,7 @@ class FaissVectorStore:
     def __init__(self, dimension: int, embedding_model: Optional[str] = None):
         self.dimension = dimension
         self.embedding_model = embedding_model
+        self.index_metadata: Dict[str, Any] = {}
         self.index = _faiss().IndexFlatIP(dimension)
         self.chunks: List[Chunk] = []
 
@@ -48,7 +49,9 @@ class FaissVectorStore:
                 results.append((self.chunks[int(index)], float(score)))
         return results
 
-    def save(self, directory: PathLike) -> None:
+    def save(self, directory: PathLike, metadata: Optional[Dict[str, Any]] = None) -> None:
+        if metadata:
+            self.index_metadata.update(metadata)
         path = Path(directory)
         parent = path.parent
         parent.mkdir(parents=True, exist_ok=True)
@@ -57,7 +60,9 @@ class FaissVectorStore:
         try:
             self._write_to_directory(temp_path)
             if path.exists():
-                backup_path = Path(tempfile.mkdtemp(prefix=f".{path.name}.backup.", dir=str(parent)))
+                backup_path = Path(
+                    tempfile.mkdtemp(prefix=f".{path.name}.backup.", dir=str(parent))
+                )
                 backup_path.rmdir()
                 os.replace(path, backup_path)
             os.replace(temp_path, path)
@@ -85,6 +90,9 @@ class FaissVectorStore:
             "dimension": self.dimension,
             "embedding_model": self.embedding_model,
             "chunk_count": len(self.chunks),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "files": _source_names(self.chunks),
+            **self.index_metadata,
         }
         (path / METADATA_FILENAME).write_text(
             json.dumps(metadata, ensure_ascii=False, indent=2),
@@ -102,8 +110,9 @@ class FaissVectorStore:
         chunks_path = path / "chunks.json"
         metadata_path = path / METADATA_FILENAME
         if not index_path.exists() or not chunks_path.exists() or not metadata_path.exists():
+            expected = f"index.faiss, chunks.json and {METADATA_FILENAME}"
             raise FileNotFoundError(
-                f"Saved index is incomplete. Expected index.faiss, chunks.json and {METADATA_FILENAME} in {path}"
+                f"Saved index is incomplete. Expected {expected} in {path}"
             )
 
         index = _faiss().read_index(str(index_path))
@@ -118,6 +127,7 @@ class FaissVectorStore:
 
         store = cls(index.d, embedding_model=embedding_model)
         store.index = index
+        store.index_metadata = metadata
         store.chunks = [Chunk(text=item["text"], metadata=item["metadata"]) for item in payload]
         if store.index.ntotal != len(store.chunks):
             raise ValueError(
@@ -138,3 +148,12 @@ def _faiss() -> Any:
     import faiss
 
     return faiss
+
+
+def _source_names(chunks: Sequence[Chunk]) -> List[str]:
+    names = []
+    for chunk in chunks:
+        source = chunk.metadata.get("source")
+        if source and source not in names:
+            names.append(source)
+    return names

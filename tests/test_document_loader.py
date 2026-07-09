@@ -14,6 +14,38 @@ def test_load_txt_document(tmp_path):
     assert document.metadata["extension"] == ".txt"
 
 
+def test_load_txt_document_with_cp1251_fallback(tmp_path):
+    path = tmp_path / "notes.txt"
+    path.write_bytes("Текст в cp1251".encode("cp1251"))
+
+    document = load_document(path)
+
+    assert document.text == "Текст в cp1251"
+
+
+def test_load_html_document(tmp_path):
+    path = tmp_path / "page.html"
+    path.write_text("<h1>Тема</h1><p>Описание</p>", encoding="utf-8")
+
+    document = load_document(path)
+
+    assert "Тема" in document.text
+    assert "Описание" in document.text
+
+
+def test_load_ipynb_document(tmp_path):
+    path = tmp_path / "lesson.ipynb"
+    path.write_text(
+        '{"cells": [{"cell_type": "markdown", "source": ["# Заголовок\\n", "Текст"]}]}',
+        encoding="utf-8",
+    )
+
+    document = load_document(path)
+
+    assert "[markdown]" in document.text
+    assert "# Заголовок" in document.text
+
+
 def test_load_markdown_with_original_source_name(tmp_path):
     path = tmp_path / "safe_name.md"
     path.write_text("# Тема\n\nОписание", encoding="utf-8")

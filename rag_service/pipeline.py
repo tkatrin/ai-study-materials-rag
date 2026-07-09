@@ -56,7 +56,9 @@ def ask_question(
     reranker: Optional[Reranker] = None,
 ) -> Tuple[Answer, List[Tuple[Chunk, float]]]:
     query_embedding = embedder.embed([question])
-    retrieval_k = max(top_k, candidate_k or top_k)
+    retrieval_k = top_k
+    if reranker is not None:
+        retrieval_k = max(top_k, candidate_k or top_k)
     results = store.search(query_embedding, top_k=retrieval_k, min_score=min_score)
     if reranker is not None:
         results = reranker.rerank(question, results, top_k=top_k)

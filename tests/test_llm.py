@@ -1,5 +1,4 @@
 import io
-import json
 from urllib import error
 
 import pytest

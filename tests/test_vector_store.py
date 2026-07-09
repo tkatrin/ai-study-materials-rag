@@ -33,12 +33,18 @@ def test_vector_store_search_threshold_and_persistence(tmp_path):
     assert results[0][0].text == "машинное обучение"
     assert store.search(np.array([0.1, 0.1, 0.0], dtype="float32"), top_k=2, min_score=0.5) == []
 
-    store.save(tmp_path)
+    store.save(tmp_path, metadata={"chunk_size": 900, "chunk_overlap": 160})
     loaded = FaissVectorStore.load(tmp_path, expected_embedding_model="test-embedder")
 
     assert loaded.embedding_model == "test-embedder"
+    assert loaded.index_metadata["chunk_size"] == 900
+    assert loaded.index_metadata["chunk_overlap"] == 160
+    assert loaded.index_metadata["files"] == ["ml.md", "db.txt"]
     assert loaded.chunks[0].metadata["source"] == "ml.md"
-    assert loaded.search(np.array([0.0, 1.0, 0.0], dtype="float32"), top_k=1)[0][0].text == "базы данных"
+    assert (
+        loaded.search(np.array([0.0, 1.0, 0.0], dtype="float32"), top_k=1)[0][0].text
+        == "базы данных"
+    )
 
 
 def test_vector_store_rejects_embedding_model_mismatch(tmp_path):

@@ -5,13 +5,19 @@
 ![Streamlit](https://img.shields.io/badge/Streamlit-app-red)
 ![FAISS](https://img.shields.io/badge/vector%20store-FAISS-green)
 
-Локальный RAG-сервис для конспектов, PDF, Markdown, TXT и DOCX. Пользователь загружает учебные материалы, система извлекает текст, режет его на фрагменты, строит эмбеддинги через Sentence Transformers, сохраняет их в FAISS и отвечает на вопросы по найденному контексту. По умолчанию включен extractive-режим, а для настоящей генерации можно подключить локальную Ollama-модель.
+Локальный RAG-сервис для конспектов, PDF, Markdown, TXT, HTML, IPYNB и DOCX. Пользователь загружает учебные материалы, система извлекает текст, режет его на фрагменты, строит эмбеддинги через Sentence Transformers, сохраняет их в FAISS и отвечает на вопросы по найденному контексту. По умолчанию включен extractive-режим, а для настоящей генерации можно подключить локальную Ollama-модель.
 
 ![Пример интерфейса](docs/screenshots/ui-example.svg)
 
+## Демо и документация
+
+- [Demo walkthrough](docs/demo.md)
+- [Architecture](docs/architecture.md)
+- [Retrieval evaluation](docs/evaluation.md)
+
 ## Возможности MVP
 
-- загрузка файлов `.pdf`, `.txt`, `.md`, `.docx`;
+- загрузка файлов `.pdf`, `.txt`, `.md`, `.html`, `.ipynb`, `.docx`;
 - извлечение и нормализация текста;
 - разбиение документов на перекрывающиеся фрагменты;
 - построение эмбеддингов моделью `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`;
@@ -144,6 +150,7 @@ ollama pull llama3.1
 ```bash
 pip install -r requirements-dev.txt
 pytest
+ruff check .
 ```
 
 Тесты покрывают разбиение текста, загрузку TXT/MD/PDF-страниц, безопасное сохранение upload-файлов, настройки окружения, метаданные чанков, полный путь `build_index -> ask_question`, reranking, генераторный fallback, обработку ошибок Ollama, FAISS-поиск, замену сохраненного индекса, сохранение embedding-модели и поведение пустого индекса.
