@@ -1,4 +1,5 @@
-from rag_service.chunker import split_text
+from rag_service.chunker import chunk_documents, split_text
+from rag_service.models import Document
 
 
 def test_split_text_keeps_overlap_and_size():
@@ -17,3 +18,18 @@ def test_split_text_rejects_bad_overlap():
         assert "overlap" in str(error)
     else:
         raise AssertionError("Expected ValueError")
+
+
+def test_chunk_documents_preserves_source_metadata():
+    documents = [
+        Document(
+            text="Первый абзац.\nВторой абзац про базы данных.",
+            metadata={"source": "notes.md"},
+        )
+    ]
+
+    chunks = chunk_documents(documents, chunk_size=40, chunk_overlap=5)
+
+    assert chunks
+    assert chunks[0].metadata["source"] == "notes.md"
+    assert chunks[0].metadata["chunk_id"] == 1

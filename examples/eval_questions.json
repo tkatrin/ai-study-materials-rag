@@ -1,0 +1,17 @@
+[
+  {
+    "question": "Чем supervised learning отличается от unsupervised learning?",
+    "expected_sources": ["machine_learning.md"],
+    "expected_terms": ["метки", "скрытую структуру"]
+  },
+  {
+    "question": "Что такое внешний ключ?",
+    "expected_sources": ["databases.txt"],
+    "expected_terms": ["первичный ключ", "целостность данных"]
+  },
+  {
+    "question": "Как бороться с переобучением нейронной сети?",
+    "expected_sources": ["neural_networks.md"],
+    "expected_terms": ["регуляризация", "dropout", "ранняя остановка"]
+  }
+]

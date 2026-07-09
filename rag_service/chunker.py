@@ -25,7 +25,7 @@ def split_text(text: str, chunk_size: int = 900, chunk_overlap: int = 160) -> Li
     if chunk_overlap >= chunk_size:
         raise ValueError("chunk_overlap must be smaller than chunk_size")
 
-    clean_text = " ".join(text.split())
+    clean_text = _normalize_for_chunking(text)
     if not clean_text:
         return []
     if len(clean_text) <= chunk_size:
@@ -55,3 +55,9 @@ def _best_split(text: str, start: int, end: int) -> int:
         if split > int(len(window) * 0.55):
             return start + split + len(separator)
     return end
+
+
+def _normalize_for_chunking(text: str) -> str:
+    lines = [" ".join(line.split()) for line in text.splitlines()]
+    lines = [line for line in lines if line]
+    return "\n".join(lines)

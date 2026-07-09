@@ -16,6 +16,22 @@ def test_build_answer_uses_retrieved_chunks():
     assert answer.sources == chunks
 
 
+def test_build_answer_can_use_generator():
+    chunks = [Chunk(text="Контекст", metadata={"source": "a.txt", "chunk_id": 1})]
+
+    answer = build_answer("Вопрос?", chunks, generator=lambda prompt: "Ответ из LLM [1]")
+
+    assert answer.answer == "Ответ из LLM [1]"
+    assert answer.sources == chunks
+
+
+def test_build_answer_handles_empty_context():
+    answer = build_answer("Что известно?", [])
+
+    assert "Не нашел" in answer.answer
+    assert answer.sources == []
+
+
 def test_format_sources_includes_file_and_fragment():
     text = format_sources([Chunk(text="Небольшой фрагмент", metadata={"source": "a.txt", "chunk_id": 2})])
 

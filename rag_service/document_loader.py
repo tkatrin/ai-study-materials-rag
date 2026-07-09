@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Iterable, List, Union
+from typing import Iterable, List, Optional, Tuple, Union
 
 from .models import Document
 
@@ -8,9 +8,10 @@ SUPPORTED_EXTENSIONS = {".pdf", ".txt", ".md", ".docx"}
 
 
 PathLike = Union[str, Path]
+DocumentInput = Union[PathLike, Tuple[PathLike, str]]
 
 
-def load_document(path: PathLike) -> Document:
+def load_document(path: PathLike, source_name: Optional[str] = None) -> Document:
     file_path = Path(path)
     suffix = file_path.suffix.lower()
 
@@ -28,15 +29,21 @@ def load_document(path: PathLike) -> Document:
     return Document(
         text=_normalize_text(text),
         metadata={
-            "source": file_path.name,
+            "source": source_name or file_path.name,
             "path": str(file_path),
             "extension": suffix,
         },
     )
 
 
-def load_documents(paths: Iterable[PathLike]) -> List[Document]:
-    return [load_document(path) for path in paths]
+def load_documents(paths: Iterable[DocumentInput]) -> List[Document]:
+    documents = []
+    for item in paths:
+        if isinstance(item, tuple):
+            documents.append(load_document(item[0], source_name=item[1]))
+        else:
+            documents.append(load_document(item))
+    return documents
 
 
 def _read_pdf(path: Path) -> str:
